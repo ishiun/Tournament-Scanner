@@ -9,20 +9,24 @@ from email.mime.text import MIMEText
 #alias for emails
 
 TOURNAMENTS = ["http://tennislink.usta.com/Tournaments/TournamentHome/Tournament.aspx?T=202303#&&s=1A8"]
-MY_EMAIL = "ishiunsoftware@gmail.com"
-MY_PASSWORD = "taiwan888"
+MY_EMAIL = "******"
+MY_PASSWORD = "******"
+TO_EMAIL = "********"
+
 s = sched.scheduler(time.time, time.sleep)
 
 def send_email(tournament_name):
-    to_email = "ikuo1@umbc.edu"
+    #Set up email message
     msg = MIMEMultipart()
     msg['From'] = MY_EMAIL
-    msg['To'] = to_email
+    msg['To'] = TO_EMAIL
     msg['Subject'] = tournament_name
 
+    #Add body to message
     body = "There are new applicants for " + tournament_name + "."
     msg.attach(MIMEText(body,'plain'))
 
+    #Set up email server and send email
     server = smtplib.SMTP('smtp.gmail.com', '587')
     server.starttls()
     server.login(MY_EMAIL, MY_PASSWORD)
@@ -34,14 +38,15 @@ def send_email(tournament_name):
 def get_tournament_info(url):
     driver = webdriver.PhantomJS(executable_path='/Users/i-shiunkuo/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
     driver.get(url)
+
+    #1 second delay to allow for redirect
     time.sleep(1)
 
     #Get tournament info
     tournament_name = driver.find_element_by_xpath("//*[@id='aspnetForm']/div[3]/div[6]/div[2]/div[6]/h1").text
     number_of_4_5_applicants = driver.find_element_by_xpath("//*[@id='ctl00_mainContent_ControlTabs7_pnlUpdate']/div[8]").text[15:]
-    send_email(tournament_name)
 
-    if exists("/Users/i-shiunkuo/sideProjects/webScraper/letsLearn/" + str(tournament_name) + '.txt'):
+    if exists("/Users/i-shiunkuo/Side_Projects/Tournament_Scanner/" + str(tournament_name) + '.txt'):
         applicants_file = open(str(tournament_name) + ".txt", 'r+')
 
         #New players have registered for the tournament
