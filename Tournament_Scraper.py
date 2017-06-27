@@ -6,12 +6,7 @@ from os.path import exists
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-#added since last push
-#fixed overwrite if following 2 divisions in the same tournament
-#removed global tournament lists
-
 ##features
-#---- selection == events
 #directory with touranment files
 #2 funcs sending applicants/draw email
 #sends a warning email when deadline comes close
@@ -19,7 +14,6 @@ from email.mime.text import MIMEText
 
 ##Bugs/Edge Cases
 #breaks when players tab is removed
-#change xpaths to ids or class names
 #exit program if no tournaments in either files
 #if Open_Tournaments.txt or Closed_Tournaments.txt doesnt exist
 #NoSuchElementException - add a catch block
@@ -29,8 +23,7 @@ MY_PASSWORD = "******"
 TO_EMAIL = "******"
 
 s = sched.scheduler(time.time, time.sleep)
-driver = webdriver.PhantomJS(executable_path='/Users/i-shiunkuo/Side_Projects/Tournament_Scanner/PhantomJs/phantomjs-2.1.1-macosx/bin/phantomjs')
-
+driver = webdriver.PhantomJS(executable_path='/Users/i-shiunkuo/Side_Projects/Tournament_Scanner/phantomjs-2.1.1-macosx/bin/phantomjs')
 
 def send_email(subject, msg_body):
     #Set up email message
@@ -63,7 +56,6 @@ def check_closed_tournaments():
         time.sleep(3)
 
         tournament_name = driver.find_element_by_class_name("tournament_search").text.replace("/", "_").replace(" ", "_")
-        #No "_" in tournament name
         tournament_name_clean = tournament_name.replace("_", " ")
         division = Select(driver.find_element_by_class_name("TournamentHome_SpecialCSS_TopAnchor")).first_selected_option.text.split(" ")[-1]
 
@@ -76,12 +68,19 @@ def check_closed_tournaments():
 
         if (is_draw_released(division)):
             if (division == "Events"):
+                print("   -> Draws have been released")
                 msg_body = "The Draws for the tournament " + tournament_name_clean + " has been released.\n\n" + url
                 send_email("Draw released", msg_body)
             else:
+                print("   -> " + division + " Draw has been released")
                 msg_body = "The " + division + " Draw for the tournament " + tournament_name_clean + " has been released.\n\n" + url
                 send_email(division + " Draw Released", msg_body)
             closed_tournaments.remove(url)
+        else:
+            if (division == "Events"):
+                print("   -> Draws has not been released")
+            else:
+                print("   -> " + division + " Draw has not been released")
 
     #Clears Closed_Tournaments.txt file
     closed_tournaments_file.seek(0)
@@ -104,7 +103,7 @@ def check_open_tournaments():
     for url in open_tournaments:
         if (is_tournament_closed(url)):
             #Remove URL from Open_Tournaments.txt
-            OPEN_TOURNAMENTS.remove(url)
+            open_tournaments.remove(url)
 
     #Clears Open_Tournaments.txt
     open_tournaments_file.seek(0)
@@ -117,7 +116,7 @@ def check_open_tournaments():
     open_tournaments_file.close()
     print_time()
 
-    s.enter(3600,1, check_open_tournaments)
+    s.enter(1200,1, check_open_tournaments)
 
 def is_tournament_closed(url):
 
@@ -130,9 +129,12 @@ def is_tournament_closed(url):
     tournament_name_clean = tournament_name.replace("_", " ")
     division = Select(driver.find_element_by_class_name("TournamentHome_SpecialCSS_TopAnchor")).first_selected_option.text.split(" ")[-1]
 
-    if (is_signup_deadline_passed(driver)):
+    print(tournament_name_clean)
 
-        if (is_draw_released(url)):
+    if (is_signup_deadline_passed(driver)):
+        print("   Status: Registration Closed")
+
+        if (is_draw_released(division)):
             if (division == "Events"):
                 msg_body = "The Draws for the tournament " + tournament_name_clean + " have been released.\n\n" + url
                 send_email("Draws released", msg_body)
@@ -142,16 +144,20 @@ def is_tournament_closed(url):
 
         #Appends URL to Closed_Tournaments.txt
         else:
+            if (division == "Events"):
+                print("   -> Draws have not been released")
+            else:
+                print("   -> " + division + " Draw has not been released")
+            print("   -> Moving tournaments to Closed Tournaments list...\n")
             Closed_Tournaments_file = open("Closed_Tournaments.txt", "a")
             Closed_Tournaments_file.write("\n" + url)
         return True
 
     else:
-        check_for_new_applicants(tournament_name, tournament_name_clean, division)
+        check_for_new_applicants(tournament_name, division, url)
         return False
 
-def check_for_new_applicants(tournament_name, tournament_name_clean, division):
-        print(tournament_name_clean)
+def check_for_new_applicants(tournament_name, division, url):
         print("   Status: Registration Open")
         if (division == "Events"):
             print("   Checking for new applicants...")
@@ -160,12 +166,11 @@ def check_for_new_applicants(tournament_name, tournament_name_clean, division):
 
         #Get tournament info
         try:
-            number_of_applicants = int(driver.find_element_by_xpath("//*[@id='ctl00_mainContent_ControlTabs7_pnlUpdate']/div[8]").text[15:])
+            number_of_applicants = int(driver.find_element_by_class_name("total").text[15:])
+
         except NoSuchElementException:
             time.sleep(5)
-            number_of_applicants = int(driver.find_element_by_xpath("//*[@id='ctl00_mainContent_ControlTabs7_pnlUpdate']/div[8]").text[15:])
-        #move to is_tournament_closed
-
+            number_of_applicants = int(driver.find_element_by_class_name("total").text[15:])
 
         file_name = division + "_" + tournament_name + ".txt"
 
@@ -182,11 +187,11 @@ def check_for_new_applicants(tournament_name, tournament_name_clean, division):
                 number_of_new_applicants = str(number_of_applicants - past_number_of_applicants)
                 if (division == "Events"):
                     print("   -> " + number_of_new_applicants + " new applicant(s) have registered\n")
-                    msg_body = number_of_new_applicants + " new applicant(s) have registered for the " + tournament_name_clean + "."
+                    msg_body = number_of_new_applicants + " new applicant(s) have registered for the " + tournament_name_clean + ".\n\n" + url
                     send_email("New Applicants Registered", msg_body)
                 else:
                     print("   -> " + number_of_new_applicants+ " new " + division + " applicant(s) have registered\n")
-                    msg_body = number_of_new_applicants + " new " + division + " applicant(s) have registered for the " + tournament_name_clean + "."
+                    msg_body = number_of_new_applicants + " new " + division + " applicant(s) have registered for the " + tournament_name_clean + ".\n\n" + url
                     send_email("New " + division + " Applicants Registered", msg_body)
 
                 applicants_file.seek(0)
@@ -217,17 +222,6 @@ def is_draw_released(division):
         is_draw_released = True
     except NoSuchElementException:
         is_draw_released = False
-
-    if (is_draw_released):
-        if (division == "Events"):
-            print("   -> Draws have been released")
-        else:
-            print("   ->" + division + " Draw has been released")
-    else:
-        if (division == "Events"):
-            print("   -> Draws have not been released")
-        else:
-            print("   ->" + division + " Draw has not been released")
 
     return is_draw_released
 
