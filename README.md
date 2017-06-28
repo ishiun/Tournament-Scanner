@@ -9,5 +9,4 @@ Sends user an email notifying the user when a new player has signed up for a spe
 2. Scroll through the divisions on the page and choose any division
 3. Add link to the TOURNAMENTS list
 
-Run Using
-python3 Tournament_Scanner.py 
+Run Using:  python3 Tournament_Scanner.py 
