@@ -1,6 +1,6 @@
 import sched, time, sys, smtplib, datetime, os
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.support.ui import Select
 from os.path import exists
 from email.mime.multipart import MIMEMultipart
@@ -13,13 +13,15 @@ from email.mime.text import MIMEText
 
 ##Bugs/Edge Cases
 #breaks when players tab is removed
-#NoSuchElementException - add a catch block
 
 MY_EMAIL = "******"
 MY_PASSWORD = "******"
 TO_EMAIL = "******"
 
+#Sets up scheduler
 s = sched.scheduler(time.time, time.sleep)
+
+#Sets up browser
 driver = webdriver.PhantomJS(executable_path='/Users/i-shiunkuo/Side_Projects/Tournament_Scanner/phantomjs-2.1.1-macosx/bin/phantomjs')
 
 def send_email(subject, msg_body):
@@ -48,13 +50,21 @@ def check_closed_tournaments():
     closed_tournaments.remove("")
 
     for url in closed_tournaments:
+
         driver.get(url)
         time.sleep(3)
 
+        #Gets tournament info
         tournament_name = driver.find_element_by_class_name("tournament_search").text.replace("/", "_").replace(" ", "_")
         tournament_name_clean = tournament_name.replace("_", " ")
-        division = Select(driver.find_element_by_class_name("TournamentHome_SpecialCSS_TopAnchor")).first_selected_option.text.split(" ")[-1]
+        try:
+            division = Select(driver.find_element_by_class_name("TournamentHome_SpecialCSS_TopAnchor")).first_selected_option.text.split(" ")[-1]
+        except NoSuchElementException:
 
+            url += "#&&s=1"
+            driver.get(url)
+            time.sleep(3)
+            division = "Events"
         print(tournament_name_clean)
         print("   Status: Registration Closed")
         if (division == "Events"):
@@ -99,6 +109,7 @@ def check_open_tournaments():
     open_tournaments.remove("")
 
     for url in open_tournaments:
+
         if (is_tournament_closed(url)):
             #Remove URL from Open_Tournaments.txt
             open_tournaments.remove(url)
@@ -112,24 +123,28 @@ def check_open_tournaments():
         open_tournaments_file.write(urls + "\n")
 
     open_tournaments_file.close()
-
     are_tournament_files_empty()
-
     print_time()
-
     s.enter(300,1, check_open_tournaments)
 
 def is_tournament_closed(url):
-
-    driver.get(url)
+    try:
+        driver.get(url)
+    except WebDriverException:
+        return True;
 
     #3 second delay to allow for redirect
     time.sleep(3)
 
     tournament_name = driver.find_element_by_class_name("tournament_search").text.replace("/", "_").replace(" ", "_")
     tournament_name_clean = tournament_name.replace("_", " ")
-    division = Select(driver.find_element_by_class_name("TournamentHome_SpecialCSS_TopAnchor")).first_selected_option.text.split(" ")[-1]
-
+    try:
+        division = Select(driver.find_element_by_class_name("TournamentHome_SpecialCSS_TopAnchor")).first_selected_option.text.split(" ")[-1]
+    except NoSuchElementException:
+        url += "#&&s=1"
+        driver.get(url)
+        time.sleep(3)
+        division = "Events"
     print(tournament_name_clean)
 
     if (is_signup_deadline_passed(driver)):
@@ -137,9 +152,11 @@ def is_tournament_closed(url):
 
         if (is_draw_released(division)):
             if (division == "Events"):
+                print("   The Draws have been released.\n")
                 msg_body = "The Draws for the tournament " + tournament_name_clean + " have been released.\n\n" + url
                 send_email("Draws released", msg_body)
             else:
+                print("The " + division + " Draw has been released.\n")
                 msg_body = "The " + division + " Draw for the tournament " + tournament_name_clean + " has been released.\n\n" + url
                 send_email(division + "Draw Released", msg_body)
 
@@ -155,11 +172,11 @@ def is_tournament_closed(url):
         return True
 
     else:
-        check_for_new_applicants(tournament_name, division, url)
+        check_for_new_applicants(tournament_name, tournament_name_clean, division, url)
         return False
 
 
-def check_for_new_applicants(tournament_name, division, url):
+def check_for_new_applicants(tournament_name, tournament_name_clean, division, url):
         print("   Status: Registration Open")
         if (division == "Events"):
             print("   Checking for new applicants...")
@@ -167,12 +184,8 @@ def check_for_new_applicants(tournament_name, division, url):
             print("   Checking for new " + division + " applicants...")
 
         #Get tournament info
-        try:
-            number_of_applicants = int(driver.find_element_by_class_name("total").text[15:])
 
-        except NoSuchElementException:
-            time.sleep(5)
-            number_of_applicants = int(driver.find_element_by_class_name("total").text[15:])
+        number_of_applicants = int(driver.find_element_by_class_name("total").text[15:])
 
         file_name = division + "_" + tournament_name + ".txt"
 
@@ -249,7 +262,7 @@ def print_time():
     print("...")
 
 def are_tournament_files_empty():
-        if ((os.stat("Tournaments/Open_Tournaments.txt").st_size < 1) and (os.stat("Tournaments/Closed_Tournaments.txt").st_size < 1):
+        if ((os.stat("Tournaments/Open_Tournaments.txt").st_size < 1) and (os.stat("Tournaments/Closed_Tournaments.txt").st_size < 1)):
             print("No more tournaments being followed")
             exit()
 
