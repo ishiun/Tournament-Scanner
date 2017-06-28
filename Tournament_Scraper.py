@@ -7,15 +7,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 ##features
-#directory with touranment files
 #2 funcs sending applicants/draw email
 #sends a warning email when deadline comes close
 #Lookout for specific players
 
 ##Bugs/Edge Cases
 #breaks when players tab is removed
-#exit program if no tournaments in either files
-#if Open_Tournaments.txt or Closed_Tournaments.txt doesnt exist
 #NoSuchElementException - add a catch block
 
 MY_EMAIL = "******"
@@ -45,9 +42,8 @@ def send_email(subject, msg_body):
     server.quit()
 
 def check_closed_tournaments():
-    are_tournament_files_empty()
     print("Checking Closed Tournaments... \n----------------")
-    closed_tournaments_file = open("Closed_Tournaments.txt", "r+")
+    closed_tournaments_file = open("Tournaments/Closed_Tournaments.txt", "r+")
     closed_tournaments = closed_tournaments_file.read().split("\n")
     closed_tournaments.remove("")
 
@@ -68,19 +64,19 @@ def check_closed_tournaments():
 
         if (is_draw_released(division)):
             if (division == "Events"):
-                print("   -> Draws have been released")
+                print("   -> Draws have been released\n")
                 msg_body = "The Draws for the tournament " + tournament_name_clean + " has been released.\n\n" + url
                 send_email("Draw released", msg_body)
             else:
-                print("   -> " + division + " Draw has been released")
+                print("   -> " + division + " Draw has been released\n")
                 msg_body = "The " + division + " Draw for the tournament " + tournament_name_clean + " has been released.\n\n" + url
                 send_email(division + " Draw Released", msg_body)
             closed_tournaments.remove(url)
         else:
             if (division == "Events"):
-                print("   -> Draws has not been released")
+                print("   -> Draws has not been released\n")
             else:
-                print("   -> " + division + " Draw has not been released")
+                print("   -> " + division + " Draw has not been released\n")
 
     #Clears Closed_Tournaments.txt file
     closed_tournaments_file.seek(0)
@@ -90,13 +86,15 @@ def check_closed_tournaments():
     for urls in closed_tournaments:
         closed_tournaments_file.write(urls + "\n")
     closed_tournaments_file.close()
-    s.enter(1200,1, check_closed_tournaments)
+    s.enter(60,1, check_closed_tournaments)
+
+    are_tournament_files_empty()
+
     print_time()
 
 def check_open_tournaments():
-    are_tournament_files_empty()
     print("Checking Open Tournaments... \n----------------")
-    open_tournaments_file = open("Open_Tournaments.txt", "r+")
+    open_tournaments_file = open("Tournaments/Open_Tournaments.txt", "r+")
     open_tournaments = open_tournaments_file.read().split("\n")
     open_tournaments.remove("")
 
@@ -114,9 +112,12 @@ def check_open_tournaments():
         open_tournaments_file.write(urls + "\n")
 
     open_tournaments_file.close()
+
+    are_tournament_files_empty()
+
     print_time()
 
-    s.enter(1200,1, check_open_tournaments)
+    s.enter(300,1, check_open_tournaments)
 
 def is_tournament_closed(url):
 
@@ -149,13 +150,14 @@ def is_tournament_closed(url):
             else:
                 print("   -> " + division + " Draw has not been released")
             print("   -> Moving tournaments to Closed Tournaments list...\n")
-            Closed_Tournaments_file = open("Closed_Tournaments.txt", "a")
+            Closed_Tournaments_file = open("Tournaments/Closed_Tournaments.txt", "a")
             Closed_Tournaments_file.write("\n" + url)
         return True
 
     else:
         check_for_new_applicants(tournament_name, division, url)
         return False
+
 
 def check_for_new_applicants(tournament_name, division, url):
         print("   Status: Registration Open")
@@ -175,8 +177,8 @@ def check_for_new_applicants(tournament_name, division, url):
         file_name = division + "_" + tournament_name + ".txt"
 
         #Applicant file for tournament found
-        if exists("/Users/i-shiunkuo/Side_Projects/Tournament_Scanner/" + file_name):
-            applicants_file = open(file_name, 'r+')
+        if exists("Tournament_Info/" + file_name):
+            applicants_file = open("Tournament_Info/" + file_name, 'r+')
             try:
                 past_number_of_applicants = int(applicants_file.read().split()[0])
             except IndexError:
@@ -206,7 +208,7 @@ def check_for_new_applicants(tournament_name, division, url):
         #Applicant file for tournament not found
         else:
             print("   -> New tournament followed")
-            applicants_file = open(file_name, 'w+')
+            applicants_file = open("Tournament_Info/" + file_name, 'w+')
 
             applicants_file.write(str(number_of_applicants) + " Applicant(s) in the " + division + " Division")
             if (division == "Events"):
@@ -247,15 +249,18 @@ def print_time():
     print("...")
 
 def are_tournament_files_empty():
-    #try:
-    #os.path.getsize("C:/Tournaments/Open_Tournaments.txt")
-    '''        if ((os.stat("Open_Tournament.txt").st_size < 1) and (os.stat("Closed_Tournaments.txt").st_size < 1)):
-            print("No tournaments being followed")
+        if ((os.stat("Tournaments/Open_Tournaments.txt").st_size < 1) and (os.stat("Tournaments/Closed_Tournaments.txt").st_size < 1):
+            print("No more tournaments being followed")
             exit()
-    except FileNotFoundError:
-    '''
+
+def create_tournaments_files():
+    if (not exists("Tournaments/Open_Tournaments.txt")):
+        open("Tournaments/Open_Tournaments.txt", "w+").close()
+    if (not exists("Tournaments/Closed_Tournaments.txt")):
+        open("Tournaments/Closed_Tournaments.txt", "w+").close()
 
 def main():
+    create_tournaments_files()
     check_closed_tournaments()
     check_open_tournaments()
 
