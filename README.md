@@ -14,8 +14,9 @@ Sends user an email notifying the user when a new player has signed up for a spe
   - TO_EMAIL = recipient of notifications
 
 **** Have to change SMTP server settings/port number if you're not using gmail account to send emails.  
-     iCloud: smtp.mail.me.com, 587  
-     Yahoo: plus.smtp.mail.yahoo.com, 465
+  
+iCloud: smtp.mail.me.com, 587  
+Yahoo: plus.smtp.mail.yahoo.com, 465
     
 Run Using:  
 python3 Tournament_Scanner.py 
