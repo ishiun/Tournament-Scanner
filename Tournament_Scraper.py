@@ -6,14 +6,6 @@ from os.path import exists
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-##features
-#2 funcs sending applicants/draw email
-#sends a warning email when deadline comes close
-#Lookout for specific players
-
-##Bugs/Edge Cases
-#breaks when players tab is removed
-
 MY_EMAIL = "******"
 MY_PASSWORD = "******"
 TO_EMAIL = "******"
@@ -95,11 +87,10 @@ def check_closed_tournaments():
     #Writes tournament links for draws that have not been released into Closed_Tournaments.txt
     for urls in closed_tournaments:
         closed_tournaments_file.write(urls + "\n")
+
     closed_tournaments_file.close()
     s.enter(60,1, check_closed_tournaments)
-
     are_tournament_files_empty()
-
     print_time()
 
 def check_open_tournaments():
@@ -109,7 +100,6 @@ def check_open_tournaments():
     open_tournaments.remove("")
 
     for url in open_tournaments:
-
         if (is_tournament_closed(url)):
             #Remove URL from Open_Tournaments.txt
             open_tournaments.remove(url)
@@ -140,16 +130,20 @@ def is_tournament_closed(url):
     tournament_name_clean = tournament_name.replace("_", " ")
     try:
         division = Select(driver.find_element_by_class_name("TournamentHome_SpecialCSS_TopAnchor")).first_selected_option.text.split(" ")[-1]
+
     except NoSuchElementException:
+        #Changes URL to direct to applicants and retries the driver
         url += "#&&s=1"
         driver.get(url)
-        time.sleep(3)
+        time.sleep(5)
         division = "Events"
+
     print(tournament_name_clean)
 
     if (is_signup_deadline_passed(driver)):
         print("   Status: Registration Closed")
 
+        #If draw has been released, send notification email
         if (is_draw_released(division)):
             if (division == "Events"):
                 print("   The Draws have been released.\n")
@@ -171,10 +165,10 @@ def is_tournament_closed(url):
             Closed_Tournaments_file.write("\n" + url)
         return True
 
+    #If registration is still open, checks for new applicants
     else:
         check_for_new_applicants(tournament_name, tournament_name_clean, division, url)
         return False
-
 
 def check_for_new_applicants(tournament_name, tournament_name_clean, division, url):
         print("   Status: Registration Open")
@@ -184,9 +178,7 @@ def check_for_new_applicants(tournament_name, tournament_name_clean, division, u
             print("   Checking for new " + division + " applicants...")
 
         #Get tournament info
-
         number_of_applicants = int(driver.find_element_by_class_name("total").text[15:])
-
         file_name = division + "_" + tournament_name + ".txt"
 
         #Applicant file for tournament found
@@ -209,9 +201,11 @@ def check_for_new_applicants(tournament_name, tournament_name_clean, division, u
                     msg_body = number_of_new_applicants + " new " + division + " applicant(s) have registered for the " + tournament_name_clean + ".\n\n" + url
                     send_email("New " + division + " Applicants Registered", msg_body)
 
+                #Updates touranment information text files
                 applicants_file.seek(0)
                 applicants_file.truncate()
                 applicants_file.write(str(number_of_applicants) + " Applicant(s) in the " + division + " Division")
+
             else:
                 if (division == "Events"):
                     print("   -> No new applicants have registered\n")
@@ -231,7 +225,6 @@ def check_for_new_applicants(tournament_name, tournament_name_clean, division, u
         applicants_file.close()
 
 def is_draw_released(division):
-
     try:
         draw = driver.find_element_by_id("ctl00_mainContent_liDraws")
         is_draw_released = True
@@ -248,18 +241,7 @@ def is_signup_deadline_passed(driver):
     return False
 
 def print_time():
-    time = datetime.datetime.now()
-    day = "AM"
-    hour = time.hour
-    if (hour > 11):
-        day = "PM"
-    if (hour > 12):
-        hour -= 12
-    if (hour == 0):
-        hour = 12;
-    print("...")
-    print(str(hour) + ":" + str(time.minute) + " " + day)
-    print("...")
+    print(time.strftime('%I:%M %p') + '\n...')
 
 def are_tournament_files_empty():
         if ((os.stat("Tournaments/Open_Tournaments.txt").st_size < 1) and (os.stat("Tournaments/Closed_Tournaments.txt").st_size < 1)):
