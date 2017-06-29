@@ -13,8 +13,8 @@ Sends user an email notifying the user when a new player has signed up for a spe
   - MY_PASSWORD = password to MY_EMAIL
   - TO_EMAIL = recipient of notifications
 
-**** Have to change SMTP server settings/port number if you're not using gmail account to send emails.
-     iCloud: smtp.mail.me.com, 587
+**** Have to change SMTP server settings/port number if you're not using gmail account to send emails.  
+     iCloud: smtp.mail.me.com, 587  
      Yahoo: plus.smtp.mail.yahoo.com, 465
     
 Run Using:  
